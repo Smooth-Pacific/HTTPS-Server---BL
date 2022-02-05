@@ -1,15 +1,11 @@
 
 FROM ubuntu:20.04
 
-# Set env to avoid user input interruption during installation
-ENV TZ=America/San_Francisco
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
 WORKDIR /home
 
-# Installs
+# Installs 
 RUN apt-get update -y
-RUN dnf -y group install "Development Tools"
+RUN apt-get install -y autoconf
 RUN apt-get install -y --no-install-recommends ssh \
                                                sudo \
                                                zsh \
@@ -24,10 +20,10 @@ RUN apt-get install -y --no-install-recommends ssh \
                                                pkg-config \
                                                libtool \
                                                m4 \
+                                               gnutls-bin \
                                                automake \
                                                libmicrohttpd-dev \
                                                make \
-                                               cmake \
                                                build-essential \
                                                clang \
                                                gdb \
@@ -35,9 +31,23 @@ RUN apt-get install -y --no-install-recommends ssh \
                                                python3-dev \
                                                htop \
                                                iftop \
-                                               iotop
+                                               iotop \
+                                               openssl \
+                                               ca-certificates
+RUN apt-get install -y g++
+RUN apt-get install -y autotools-dev
+
+ENV LD_LIBRARY_PATH="/usr/local/lib"
+
+#export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+
 
 # Change login shell to zsh
 RUN chsh -s /bin/zsh $(whoami)
 
 COPY . /home
+COPY ./certs/myCA.pem /usr/local/share/ca-certificates/myCA.crt
+RUN update-ca-certificates
+# RUN update-ca-trust enable
+# RUN update-ca-trust extract
+
