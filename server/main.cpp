@@ -1,28 +1,22 @@
-#include <iostream>
-
 #include <httpserver.hpp>
 
-class hello_world_resource : public httpserver::http_resource {
- public:
-     const std::shared_ptr<httpserver::http_response> render(const httpserver::http_request&);
-     void set_some_data(const std::string &s) {data = s;}
-     std::string data;
+using namespace httpserver;
+
+class hello_world_resource : public http_resource {
+public:
+    const std::shared_ptr<http_response> render(const http_request&) {
+        return std::shared_ptr<http_response>(new string_response("Hello, World!\n"));
+    }
 };
 
-const std::shared_ptr<httpserver::http_response> hello_world_resource::render(const httpserver::http_request& req) {
-    std::cout << "Data was: " << data << std::endl;
-    std::string datapar = req.get_arg("data");
-    set_some_data(datapar == "" ? "no data passed!!!" : datapar);
-    std::cout << "Now data is:" << data << std::endl;
-
-    return std::shared_ptr<httpserver::http_response>(new httpserver::string_response("Hello World!!!", 200));
-}
-
-int main() {
-    httpserver::webserver ws = httpserver::create_webserver(8080).start_method(httpserver::http::http_utils::INTERNAL_SELECT).max_threads(5);
+int main(int argc, char** argv) {
+    webserver ws = create_webserver(8080)
+        .use_ssl()
+        .https_mem_key("../certs/server.test.key")
+        .https_mem_cert("../certs/server.test.crt");
 
     hello_world_resource hwr;
-    ws.register_resource("/hello", &hwr, true);
+    ws.register_resource("/hello", &hwr);
     ws.start(true);
     return 0;
 }
