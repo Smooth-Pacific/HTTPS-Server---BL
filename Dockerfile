@@ -5,7 +5,6 @@ WORKDIR /home
 
 # Installs 
 RUN apt-get update -y
-RUN apt-get install -y autoconf
 RUN apt-get install -y --no-install-recommends ssh \
                                                sudo \
                                                zsh \
@@ -33,21 +32,21 @@ RUN apt-get install -y --no-install-recommends ssh \
                                                iftop \
                                                iotop \
                                                openssl \
-                                               ca-certificates
-RUN apt-get install -y g++
-RUN apt-get install -y autotools-dev
+                                               ca-certificates \
+                                               g++ \
+                                               autotools-dev \
+                                               autoconf
 
+# Library environment variable
 ENV LD_LIBRARY_PATH="/usr/local/lib"
-
-#export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 
 
 # Change login shell to zsh
 RUN chsh -s /bin/zsh $(whoami)
 
 COPY . /home
+
+# Set up certificates
 COPY ./certs/myCA.pem /usr/local/share/ca-certificates/myCA.crt
 RUN update-ca-certificates
-# RUN update-ca-trust enable
-# RUN update-ca-trust extract
 
