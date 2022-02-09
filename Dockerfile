@@ -5,6 +5,7 @@ WORKDIR /home
 
 # Installs 
 RUN apt-get update -y
+RUN apt-get install -y autoconf
 RUN apt-get install -y --no-install-recommends ssh \
                                                sudo \
                                                zsh \
@@ -32,10 +33,9 @@ RUN apt-get install -y --no-install-recommends ssh \
                                                iftop \
                                                iotop \
                                                openssl \
-                                               ca-certificates \
-                                               g++ \
-                                               autotools-dev \
-                                               autoconf
+                                               ca-certificates
+RUN apt-get install -y g++
+RUN apt-get install -y autotools-dev
 
 # Library environment variable
 ENV LD_LIBRARY_PATH="/usr/local/lib"
@@ -45,6 +45,9 @@ ENV LD_LIBRARY_PATH="/usr/local/lib"
 RUN chsh -s /bin/zsh $(whoami)
 
 COPY . /home
+
+# Runs configurations for library. Git clones and sets up if necessary
+RUN ./run_config.sh
 
 # Set up certificates
 COPY ./certs/myCA.pem /usr/local/share/ca-certificates/myCA.crt
