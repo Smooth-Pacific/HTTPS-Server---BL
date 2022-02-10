@@ -1,5 +1,6 @@
 #!/bin/sh
 
+# Build Docker image
 
 dockerfile="Dockerfile"
 

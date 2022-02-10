@@ -12,8 +12,8 @@ public:
 int main(int argc, char** argv) {
     webserver ws = create_webserver(8080)
         .use_ssl()
-        .https_mem_key("../certs/server.test.key")
-        .https_mem_cert("../certs/server.test.crt");
+        .https_mem_key("../certs/server.key")
+        .https_mem_cert("../certs/server.crt");
 
     hello_world_resource hwr;
     ws.register_resource("/hello", &hwr);
