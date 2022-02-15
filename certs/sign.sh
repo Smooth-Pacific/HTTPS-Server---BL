@@ -10,5 +10,5 @@ signature=$2
 
 openssl dgst -sha256 -sign document.key -out $signature $file
 echo "Signature created"
-openssl x509 -in x509Certificate.crt
-openssl dgst -sha256 -verify <(openssl x509 -in x509Certificate.crt -pubkey -noout) -signature $signature $file
+openssl x509 -in document.crt
+openssl dgst -sha256 -verify <(openssl x509 -in document.crt -pubkey -noout) -signature $signature $file

@@ -36,6 +36,11 @@ RUN apt-get install -y --no-install-recommends ssh \
                                                ca-certificates
 RUN apt-get install -y g++
 RUN apt-get install -y autotools-dev
+#RUN apt-get install -y linux-tools-common
+#RUN apt-get install -y linux-tools-5.10.76-linuxkit
+
+#RUN apt-get install -y linux-tools-generic
+#RUN apt-get install -y linux-tools-`uname -r`
 
 # Library environment variable
 ENV LD_LIBRARY_PATH="/usr/local/lib"

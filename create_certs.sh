@@ -38,6 +38,19 @@ echo "Generated server certificates"
 
 openssl genrsa -out document.key 2048
 openssl req -new -key document.key -out document.csr
-openssl x509 -req -in document.csr -CA myCA.pem -CAkey myCA.key -CAcreateserial -out X509Certificate.crt -days 365 -sha256
+openssl x509 -req -in document.csr -CA myCA.pem -CAkey myCA.key -CAcreateserial -out document.crt -days 365 -sha256
 
 echo "Generated document certificates"
+
+
+# move certs
+#mv certs/myCA.pem /etc/ssl/certs
+#mv certs/server.crt /etc/ssl/certs
+#mv certs/document.crt /etc/ssl/certs
+
+# mv certs/myCA.key /etc/ssl/private
+#mv certs/server.key /etc/ssl/private
+#mv certs/document.key /etc/ssl/private
+
+
+
