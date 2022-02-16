@@ -5,6 +5,7 @@ LDFLAGS = -L/usr/local/lib
 LIBRARIES = -L. -lhttpserver
 
 TARGET = main
+CONF = startConfig
 
 .PHONY: all clean
 
@@ -12,7 +13,7 @@ TARGET = main
 all: $(TARGET)
 
 $(TARGET): $(TARGET).cpp
-	$(CC) $(INCLUDE) $(LDFLAGS) $(CFLAGS) $(LIBRARIES) -o server $(TARGET).cpp
+	$(CC) $(INCLUDE) $(LDFLAGS) $(CFLAGS) $(LIBRARIES) -o server $(TARGET).cpp $(CONF).cpp
 	
 clean:
 	rm -f *.o
