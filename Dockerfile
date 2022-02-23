@@ -3,6 +3,9 @@ FROM ubuntu:20.04
 
 WORKDIR /home
 
+ENV TZ=America/Los_Angeles
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # Installs 
 RUN apt-get update -y
 RUN apt-get install -y autoconf
@@ -33,7 +36,8 @@ RUN apt-get install -y --no-install-recommends ssh \
                                                iftop \
                                                iotop \
                                                openssl \
-                                               ca-certificates
+                                               ca-certificates \
+                                               cmake
 RUN apt-get install -y g++
 RUN apt-get install -y autotools-dev
 
@@ -46,7 +50,7 @@ ENV LD_LIBRARY_PATH="/usr/local/lib"
 RUN chsh -s /bin/zsh $(whoami)
 
 
-# Runs configurations for library. Git clones and sets up if necessary
+# Runs configurations for library and certifications. Git clones and sets up if necessary
 COPY run_config.sh /home
 RUN ./run_config.sh
 
