@@ -45,8 +45,8 @@ ENV LD_LIBRARY_PATH="/usr/local/lib"
 # Change login shell to zsh
 RUN chsh -s /bin/zsh $(whoami)
 
-COPY . /home
 
 # Runs configurations for library. Git clones and sets up if necessary
+COPY run_config.sh /home
 RUN ./run_config.sh
 

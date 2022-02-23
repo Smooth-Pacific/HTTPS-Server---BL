@@ -14,6 +14,11 @@ all: $(TARGET)
 
 $(TARGET): $(TARGET).cpp
 	$(CC) $(INCLUDE) $(LDFLAGS) $(CFLAGS) $(LIBRARIES) -o server $(TARGET).cpp $(CONF).cpp
+
+test:
+	./test.sh
 	
 clean:
 	rm -f *.o
+	rm -f server
+	rm -f log.txt

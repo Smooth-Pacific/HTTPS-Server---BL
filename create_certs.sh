@@ -24,8 +24,18 @@ echo "Generated root certificates"
 openssl genrsa -out private/server.key 2048
 openssl req -new -config ../configs/server.conf -key private/server.key -out csr/server.csr
 
+cat > server.ext << EOF
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+subjectAltName = @alt_names
+[alt_names]
+DNS.1 = localhost
+IP.3 = ::1
+EOF
 
-openssl x509 -req -in csr/server.csr -CA certs/root.crt -CAkey private/root.key -CAcreateserial -out certs/server.crt -days 365 -sha256
+
+openssl x509 -req -in csr/server.csr -CA certs/root.crt -CAkey private/root.key -CAcreateserial -out certs/server.crt -days 365 -sha256 -extfile server.ext
 
 cat certs/server.crt certs/root.crt > server-chain-bundle.cert.pem
 
