@@ -17,9 +17,9 @@ startConfig::startConfig() {
 	
 	connection_limit = getenv("CONNECTION_LIMIT") ? static_cast<int>(std::stoi(getenv("CONNECTION_LIMIT"))) : 0;
 	
-	max_threads = getenv("MAX_THREADS") ? static_cast<int>(std::stoi(getenv("MAX_THREADS"))) : 20;
+	max_threads = getenv("MAX_THREADS") ? static_cast<int>(std::stoi(getenv("MAX_THREADS"))) : 1;
 
-	use_dual = getenv("DUAL") ? static_cast<int>(std::stoi(getenv("DUAL"))) : 1;
+	use_dual = getenv("DUAL") ? static_cast<int>(std::stoi(getenv("DUAL"))) : 0;
 
     mem_key = getenv("MEM_KEY") ? static_cast<std::string>(getenv("MEM_KEY")) : "../certs/server.key";
     

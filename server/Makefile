@@ -17,3 +17,5 @@ $(TARGET): $(TARGET).cpp
 	
 clean:
 	rm -f *.o
+	rm -f server
+	rm -f log.txt
