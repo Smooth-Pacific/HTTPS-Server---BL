@@ -11,7 +11,7 @@ class Logging {
 	public:
 		Logging(string file) {
 			try {
-				m_file.open(file, std::ios_base::app | fstream::in | fstream::out | fstream::trunc | fstream::binary);
+				m_file.open(file, std::fstream::in | std::fstream::out | std::fstream::app);
 			} catch(...) {
 				cerr << "file not found";
 			}
