@@ -14,7 +14,12 @@ all: $(TARGET)
 
 $(TARGET): $(TARGET).cpp
 	$(CC) $(INCLUDE) $(LDFLAGS) $(CFLAGS) $(LIBRARIES) -o server $(TARGET).cpp $(CONF).cpp
-	
+
+curl:
+	curl -v --digest --user myuser:mypass 'https://localhost:8080'
+six:
+	curl -v --digest --user myuser:mypass 'https://\[::1\]:8080'
+
 clean:
 	rm -f *.o
 	rm -f server

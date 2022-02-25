@@ -37,7 +37,10 @@ RUN apt-get install -y --no-install-recommends ssh \
                                                iotop \
                                                openssl \
                                                ca-certificates \
-                                               cmake
+                                               cmake \
+                                               libgtest-dev \
+                                               bison \
+                                               flex
 RUN apt-get install -y g++
 RUN apt-get install -y autotools-dev
 
