@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <thread>
+#include <fstream>
 #include "logging.h"
 #include "startConfig.h"
 #include "server_resource.h"

@@ -5,7 +5,7 @@ LDFLAGS = -L/usr/local/lib
 LIBRARIES = -L. -lhttpserver
 
 TARGET = main
-CONF = startConfig
+OTHER = startConfig.cpp logging.cpp
 
 .PHONY: all clean
 
@@ -13,7 +13,7 @@ CONF = startConfig
 all: $(TARGET)
 
 $(TARGET): $(TARGET).cpp
-	$(CC) $(INCLUDE) $(LDFLAGS) $(CFLAGS) $(LIBRARIES) -o server $(TARGET).cpp $(CONF).cpp
+	$(CC) $(INCLUDE) $(LDFLAGS) $(CFLAGS) $(LIBRARIES) -o server $(TARGET).cpp $(OTHER) 
 
 curl:
 	curl -v --digest --user myuser:mypass 'https://localhost:8080'
@@ -24,3 +24,4 @@ clean:
 	rm -f *.o
 	rm -f server
 	rm -f log.txt
+	rm -rf fio

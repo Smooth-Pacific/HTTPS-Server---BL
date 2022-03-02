@@ -43,6 +43,10 @@ RUN apt-get install -y --no-install-recommends ssh \
                                                flex
 RUN apt-get install -y g++
 RUN apt-get install -y autotools-dev
+RUN apt-get install -y valgrind
+RUN apt-get install -y sysstat
+RUN apt-get install -y fio
+RUN apt-get install -y ioping
 
 
 # Library environment variable
