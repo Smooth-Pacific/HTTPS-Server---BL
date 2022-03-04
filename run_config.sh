@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Server custom configs
-
-
 
 # Runs configurations after library is cloned
 dir=httplib/libhttpserver

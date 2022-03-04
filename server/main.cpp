@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <thread>
+#include <fstream>
 #include "logging.h"
 #include "startConfig.h"
 #include "server_resource.h"
@@ -42,14 +43,13 @@ int main(int argc, char** argv) {
 
 
     server_resource hwr;
+    mime_resource mr;
     ws.register_resource("/", &hwr);
+    ws.register_resource("/mime/{arg1}", &mr);
     ws.start(true);
     return 0;
 }
 
-
-
-// curl -XGET -v --digest --user myuser:mypass -k 'https://localhost:8080'
 
 
 
