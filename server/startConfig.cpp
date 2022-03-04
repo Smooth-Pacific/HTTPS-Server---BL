@@ -10,7 +10,7 @@ startConfig::startConfig() {
 		throw std::runtime_error("invalid port number");
 	}
 
-	max_connections = getenv("MAX_CONNECTIONS") ? static_cast<int>(std::stoi(getenv("MAX_CONNECTIONS"))) : 20;
+	max_connections = getenv("MAX_CONNECTIONS") ? static_cast<int>(std::stoi(getenv("MAX_CONNECTIONS"))) : 15;
 	if (max_connections < 1 || max_connections > FD_SETSIZE - 4) {
 		throw std::runtime_error("invalid number of connections");
 	}

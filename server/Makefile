@@ -19,9 +19,14 @@ curl:
 	curl -v --digest --user myuser:mypass 'https://localhost:8080'
 six:
 	curl -v --digest --user myuser:mypass 'https://\[::1\]:8080'
+xml:
+	curl -v --digest --user myuser:mypass -O 'https://localhost:8080/mime/xml'
 
 clean:
 	rm -f *.o
 	rm -f server
 	rm -f log.txt
-	rm -rf fio
+	rm -rf apmlogs
+	#rm -rf data_throughput
+	rm -f data_throughput/write*
+	rm -f data_throughput/read*
