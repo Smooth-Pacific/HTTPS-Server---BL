@@ -18,7 +18,7 @@ Logging::Logging(std::string file) {
 		m_file.open(file, std::fstream::in | std::fstream::out | std::fstream::app);
         init();
 	} catch(...) {
-		std::cerr << "file not found";
+        throw std::runtime_error("log not created");
 	}
 }
 
@@ -75,7 +75,6 @@ int Logging::parse_line(char* line) {
     while (*p < '0' || *p > '9') {
         p++;
     }
-    line[i-3] = '\0';
     i = atoi(p);
     return i;
 }

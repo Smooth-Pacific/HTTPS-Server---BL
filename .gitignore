@@ -33,5 +33,5 @@
 
 #other
 server_ca/
-server/mime_files/
+server/files/
 server/data_throughput/
