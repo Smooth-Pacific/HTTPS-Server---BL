@@ -47,6 +47,7 @@ RUN apt-get install -y valgrind
 RUN apt-get install -y sysstat
 RUN apt-get install -y fio
 RUN apt-get install -y ioping
+RUN apt-get install -y libcurl4-openssl-dev
 
 
 # Library environment variable
@@ -60,6 +61,5 @@ RUN chsh -s /bin/zsh $(whoami)
 # Runs configurations for library and certifications. Git clones and sets up if necessary
 COPY . /home
 RUN ./run_config.sh
-cp /home/server_ca/certs/root.crt /usr/local/share/ca-certificates/root.crt
-update-ca-certificates
+RUN ./create_certs.sh
 

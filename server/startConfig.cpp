@@ -22,7 +22,7 @@ startConfig::startConfig() {
 	
 	timeout = getenv("TIMEOUT") ? static_cast<int>(std::stoi(getenv("TIMEOUT"))) : 120;
 	if (timeout < 0) {
-		std::runtime_error("invalid timeout length");
+		throw std::runtime_error("invalid timeout length");
 	}
 
 	mem_limit = getenv("MEMORY_LIMIT") ? static_cast<int>(std::stoi(getenv("MEMORY_LIMIT"))) : 32000;

@@ -16,11 +16,13 @@ $(TARGET): $(TARGET).cpp
 	$(CC) $(INCLUDE) $(LDFLAGS) $(CFLAGS) $(LIBRARIES) -o server $(TARGET).cpp $(OTHER) 
 
 curl:
-	curl -v --digest --user myuser:mypass 'https://localhost:8080'
+	curl -v -XGET --digest --user myuser:mypass 'https://localhost:8080'
 six:
-	curl -v --digest --user myuser:mypass 'https://\[::1\]:8080'
+	curl -v -XGET --digest --user myuser:mypass 'https://\[::1\]:8080'
 xml:
-	curl -v --digest --user myuser:mypass -O 'https://localhost:8080/mime/xml'
+	curl -v -XGET --digest --user myuser:mypass -O 'https://localhost:8080/mime/xml'
+post:
+	curl -v -XPOST -H "Content-Type:text/xml" -H "Accept: application/xml" -d @files/sample.xml --digest --user myuser:mypass 'https://localhost:8080'
 
 clean:
 	rm -f *.o
