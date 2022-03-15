@@ -39,34 +39,28 @@ void Logging::log() {
     std::time_t time = std::chrono::system_clock::to_time_t(start);
     m_file << std::ctime(&time);
 
-    m_file << "Number of Processors: " << numProcessors << std::endl;
+    m_file << "Number of Processors: " << numProcessors << "\n";
 	double currT = getTotalValue();
-	m_file << "Current overall cpu usage %: " << currT << std::endl;
+	m_file << "Current overall cpu usage %: " << currT << "\n";
     double currP = getProcessValue();
-    m_file << "Current process cpu usage %: " << currP << std::endl;
+    m_file << "Current process cpu usage %: " << currP << "\n";
     int memtotal = parse_data("/proc/meminfo", "MemTotal");
-    m_file << "Total memory: " << memtotal << " kb" << std::endl;
+    m_file << "Total memory: " << memtotal << " kb" << "\n";
     int memfree = parse_data("/proc/meminfo", "MemFree");
-    m_file << "Memory free: " << memfree << " kb" << std::endl;
-    m_file << "Memory Used: " << (memtotal - memfree) << " kb" << std::endl;
+    m_file << "Memory free: " << memfree << " kb" << "\n";
+    m_file << "Memory Used: " << (memtotal - memfree) << " kb" << "\n";
     int cached = parse_data("/proc/meminfo", "Cached");
-    m_file << "Amount of RAM used as cached memory: " << cached << " kb"  << std::endl;
+    m_file << "Amount of RAM used as cached memory: " << cached << " kb"  << "\n";
     int swap_cache = parse_data("/proc/meminfo", "SwapCached");
-    m_file << "Amount of swap used as cached memory: " << swap_cache << std::endl;
+    m_file << "Amount of swap used as cached memory: " << swap_cache << "\n";
     int swaptotal = parse_data("/proc/meminfo", "SwapTotal");
-    m_file << "Total amount of swap available: " << swaptotal << std::endl;
+    m_file << "Total amount of swap available: " << swaptotal << "\n";
     int swapfree = parse_data("/proc/meminfo", "SwapFree");
-    m_file << "Amount of swap free: " << swapfree << std::endl;
+    m_file << "Amount of swap free: " << swapfree << "\n";
 
 
-    m_file << std::endl;
+    m_file << "\n";
     m_file.flush();
-
-
-
-	// std::ifstream  src_network("/proc/net/dev", std::ios::binary);
-	// m_file << src_network.rdbuf();
-	// m_file << std::endl << std::endl;
 }
 
 int Logging::parse_line(char* line) {
@@ -75,6 +69,7 @@ int Logging::parse_line(char* line) {
     while (*p < '0' || *p > '9') {
         p++;
     }
+    line[i-3] = '\0';
     i = atoi(p);
     return i;
 }
@@ -85,7 +80,7 @@ int Logging::parse_data(const char* file_path, const char* field) {
     char line[128];
 
     while(fgets(line, 128, file) != NULL) {
-        if (strncmp(line, field, 9) == 0) {
+        if (strncmp(line, field, 6) == 0) {
             value = parse_line(line);
             break;
         }

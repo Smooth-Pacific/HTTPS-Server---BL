@@ -10,7 +10,7 @@ PORT = "8080"
 USER = "myuser"
 PASSWORD = "mypass"
 CERT_PATH = "/usr/local/share/ca-certificates/root.crt"
-NUM_REQUESTS = 200
+NUM_REQUESTS = 100
 NUM_THREADS = 15
 
 
