@@ -48,6 +48,10 @@ RUN apt-get install -y sysstat
 RUN apt-get install -y fio
 RUN apt-get install -y ioping
 RUN apt-get install -y libcurl4-openssl-dev
+RUN apt-get install -y libssl-dev
+RUN apt-get install -y libxml2-dev
+RUN apt-get install -y libxmlsec1-dev
+
 
 
 # Library environment variable
@@ -63,3 +67,6 @@ COPY . /home
 RUN ./run_config.sh
 RUN ./create_certs.sh
 
+# Set user
+#RUN useradd -ms /bin/bash bartell
+#user bartell

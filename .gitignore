@@ -35,3 +35,4 @@
 server_ca/
 server/files/
 server/data_throughput/
+*.db

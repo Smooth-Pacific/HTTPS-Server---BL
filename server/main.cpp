@@ -6,6 +6,7 @@
 #include "logging.h"
 #include "startConfig.h"
 #include "server_resource.h"
+#include "transactions_resource.h"
 
 
 using namespace httpserver;
@@ -44,8 +45,10 @@ int main(int argc, char** argv) {
 
     server_resource hwr;
     mime_resource mr;
+    transaction_resource tr;
     ws.register_resource("/", &hwr);
     ws.register_resource("/mime/{arg1}", &mr);
+    ws.register_resource("/transaction/{arg1}", &tr);
     ws.start(true);
     return 0;
 }
