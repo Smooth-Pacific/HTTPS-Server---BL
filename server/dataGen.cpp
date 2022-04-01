@@ -10,140 +10,379 @@
 #include <set>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <algorithm>
 #include <tuple>
 #include "dasmig/namegen.hpp"
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <libxml/xmlmemory.h>
-#include <xmlsec/xmlsec.h>
-#include <xmlsec/xmltree.h>
-#include <xmlsec/xmldsig.h>
-#include <xmlsec/xmlenc.h>
-#include <xmlsec/templates.h>
-#include <xmlsec/crypto.h>
 #include "dataGen.h"
+#include <chrono>
+#include "safeq.h"
+#include <thread>
+#include <mutex>
+// #include <atomic>
+// #include <condition_variable>
+#include <sqlite3.h> 
+
 
 using ng = dasmig::ng;
 using namespace std;
 
 namespace dataGen {
-	vector<string> split (const string &s, char delim) {
+	// Split line by delimiter
+	vector<string> split (const string &s, const char delim) {
 	    vector<string> result;
-	    stringstream ss (s);
-	    string item;
-	    while (getline (ss, item, delim)) {
-	        result.push_back (item);
+	    bool quoteFlag = false;  // Checks to escape delim inside quotes
+	    string element = "";
+	    for (auto& ch: s) {
+	    	if (ch == '"') {
+	    		quoteFlag = !quoteFlag;
+	    	} else if ( ch == delim && !quoteFlag) {
+	    		result.push_back(element);
+	    		element = "";
+	    	} else {
+	    		element += ch;
+	    	}
 	    }
+	    result.push_back(element);
 	    return result;
 	}
 
-// void split_csv() {
-// 	ifstream csvfile("files/small.csv");
-// 	string line, word;
-// 	getline(csvfile, line);
-// 	vector<string> colnames = split(line, ",");
-// 	while(getline(csvfile, line)) {
-// 		vector<string> tokens = split(line, ',');
-// 		if (tokens.size() > 15) {
-// 			tokens.erase(tokens.begin() + 14);
-// 		}
-// 		for_each(tokens.begin(), tokens.end(), [] (string& s) { s = "'" + s + "'"; });
-// 		stringstream ss;
-// 		for_each(tokens.begin(), tokens.end(), [&ss] (const string& s) { ss << s << ","; });
-// 		string myline = ss.str();
-// 		myline.pop_back();
-// 	}
+	// Function to escape and quote strings
+	string quoteAndEsc(string word) {
+		std::string esc;
+		const char * src = word.c_str();
+		while (char c = *src++) {
+			if (c == '\'') {
+			  esc += "\\";
+			}
+			esc += c;
+		}
+		return "'" + esc + "'";
+	}
 
-// }
+	string quote(string word) {
+		return "'" + word + "'";
+	}
 
-	int sign_file(const char* xml_file, const char* key_file) {
-	    xmlDocPtr doc = NULL;
-	    xmlNodePtr signNode = NULL;
-	    xmlNodePtr refNode = NULL;
-	    xmlNodePtr keyInfoNode = NULL;
-	    xmlSecDSigCtxPtr dsigCtx = NULL;
-	    int res = -1;
-	    
-	    /* load doc file */
-	    doc = xmlParseFile(xml_file);
-	    if ((doc == NULL) || (xmlDocGetRootElement(doc) == NULL)){
-	        fprintf(stderr, "Error: unable to parse file \"%s\"\n", xml_file);
-	        goto done;      
-	    }
-	    /* create signature template for RSA-SHA1 enveloped signature */
-	    signNode = xmlSecTmplSignatureCreate(doc, xmlSecTransformExclC14NId, xmlSecTransformRsaSha1Id, NULL);
-	    if(signNode == NULL) {
-	        fprintf(stderr, "Error: failed to create signature template\n");
-	        goto done;              
-	    }
+	int callback(__attribute__((unused)) void *NotUsed, int argc, char **argv, char **azColName) {
+		int i;
+		for(i = 0; i<argc; i++) {
+			printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+		}
+		printf("\n");
+		return 0;
+	}
 
-	    /* add <dsig:Signature/> node to the doc */
-	    xmlAddChild(xmlDocGetRootElement(doc), signNode);
-	    /* add reference */
-	    refNode = xmlSecTmplSignatureAddReference(signNode, xmlSecTransformSha1Id, NULL, NULL, NULL);
-	    if(refNode == NULL) {
-	        fprintf(stderr, "Error: failed to add reference to signature template\n");
-	        goto done;              
+	int set_callback(void *data, __attribute__((unused)) int argc, char **argv, __attribute__((unused)) char **azColName) {
+		typedef unordered_set<string> table_type;
+		table_type* table = static_cast<table_type*>(data);
+		table->insert(argv[0]);
+		return 0;
+	}
+
+	int map_set_callback(void *data, __attribute__((unused)) int argc, char **argv, __attribute__((unused)) char **azColName) {
+		typedef map<string, set<string> > table_type;
+		table_type* table = static_cast<table_type*>(data);
+		(*table)[argv[0]].insert(argv[1]);
+		return 0;
+	}
+
+	int map_callback(void *data, __attribute__((unused)) int argc, char **argv, __attribute__((unused)) char **azColName) {
+		typedef map<string, string> table_type;
+		table_type* table = static_cast<table_type*>(data);
+		(*table)[argv[0]] = argv[1];
+		return 0;
+	}
+
+
+	int initializeDB() {
+		sqlite3 *db;
+	   	int rc;
+
+	   	rc = sqlite3_open("transaction.db", &db);
+
+	   	if( rc ) {
+	   		cerr << "Can't open database: " << sqlite3_errmsg(db) << '\n';
+	      	return(0);
+	   	} else {
+	   		cout << "Opened database successfully\n";
+	   	}
+	   	sqlite3_close(db);
+	   	return 0;
+	}
+
+
+	int createTable() {
+		sqlite3 *db;
+		char *zErrMsg = 0;
+		int rc;
+		string sql;
+
+		/* Open database */
+		rc = sqlite3_open("transaction.db", &db);
+
+		if( rc ) {
+			cerr << "Can't open database: " << sqlite3_errmsg(db) << '\n';
+			return(0);
+		} else {
+			cout << "Opened database successfully\n";
+		}
+
+		ifstream file("files/card_transaction.csv");
+		if (!file.is_open()) {
+			cerr << "File not opened\n";
+		}
+
+		string line;
+		getline(file, line);
+		vector<string> headers = split(line, ',');
+		file.close();
+
+		/* Create SQL statement */
+		sql = "CREATE TABLE transactions (";
+		for (auto& str: headers) {
+			string quoted = quoteAndEsc(str);
+			sql += quoted + " TEXT,";
+		}
+		sql.pop_back();
+		sql += ");";
+
+		/* Execute SQL statement */
+		rc = sqlite3_exec(db, sql.c_str(), callback, 0, &zErrMsg);
+
+		if( rc != SQLITE_OK ){
+			fprintf(stderr, "SQL error: %s\n", zErrMsg);
+			sqlite3_free(zErrMsg);
+		} else {
+			fprintf(stdout, "Table created successfully\n");
+		}
+		sqlite3_close(db);
+  	 	return 0;
+	}
+
+	void readth(threadsafe_queue<string>& data_queue, ifstream& file) {
+		string line;
+		unsigned long counter = 0;
+		// Read rows
+		while(getline(file, line)) {
+			data_queue.push(line);
+
+			// If queue gets too big 
+			if (data_queue.size() > 50000) {
+				sleep(1);
+			}
+			// Batch size per insert
+			if (counter == 800000) {
+				break;
+			}
+			counter++;
+		}
+		// Indicator for each thread to stop
+		string end = "END";
+		data_queue.push(end);
+		data_queue.push(end);
+		// data_queue.push(end);
+	}
+
+	void processth(threadsafe_queue<string>& data_queue, string& sql) {
+		while (true) {
+	        string line;
+	        if (data_queue.try_pop(line)) {
+	        	if (line == "END") {
+	        		break;
+	        	}
+	        	vector<string> row = split(line, ',');
+	        	string temp = " (";
+				for (auto& str: row) {
+					string quoted = quoteAndEsc(str);
+					temp += quoted + ",";
+				}
+				temp.pop_back();
+				temp += "),";
+				sql += temp;
+	        }
 	    }
-	    /* add enveloped transform */
-	    if(xmlSecTmplReferenceAddTransform(refNode, xmlSecTransformEnvelopedId) == NULL) {
-	        fprintf(stderr, "Error: failed to add enveloped transform to reference\n");
-	        goto done;              
-	    }
-	    /* add <dsig:KeyInfo/> and <dsig:KeyName/> nodes to put key name in the signed document */
-	    keyInfoNode = xmlSecTmplSignatureEnsureKeyInfo(signNode, NULL);
-	    if(keyInfoNode == NULL) {
-	        fprintf(stderr, "Error: failed to add key info\n");
-	        goto done;              
-	    }
-	    if(xmlSecTmplKeyInfoAddKeyName(keyInfoNode, NULL) == NULL) {
-	        fprintf(stderr, "Error: failed to add key name\n");
-	        goto done;              
-	    }
-	    /* create signature context, we don't need keys manager in this example */
-	    dsigCtx = xmlSecDSigCtxCreate(NULL);
-	    if(dsigCtx == NULL) {
-	        fprintf(stderr,"Error: failed to create signature context\n");
-	        goto done;
-	    }
-	    /* load private key, assuming that there is not password */
-	    dsigCtx->signKey = xmlSecCryptoAppKeyLoad(key_file, xmlSecKeyDataFormatPem, NULL, NULL, NULL);
-	    if(dsigCtx->signKey == NULL) {
-	        fprintf(stderr,"Error: failed to load private pem key from \"%s\"\n", key_file);
-	        goto done;
-	    }
-	    if(xmlSecDSigCtxSign(dsigCtx, signNode) < 0) {
-	        fprintf(stderr,"Error: signature failed\n");
-	        goto done;
-	    }
-	    xmlSaveFormatFileEnc(xml_file, doc, "UTF-8", 1);
-	    res = 0;
-	done:    
-	    /* cleanup */
-	    if(dsigCtx != NULL) {
-	        xmlSecDSigCtxDestroy(dsigCtx);
-	    }
-	    
-	    if(doc != NULL) {
-	        xmlFreeDoc(doc); 
-	    }
-	    return(res);
+	}
+
+	int insertVals() {
+		sqlite3 *db;
+		char *zErrMsg = 0;
+		int rc;
+
+		/* Open database */
+		rc = sqlite3_open("transaction.db", &db);
+	   
+	   	if( rc ) {
+	    	fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+	    	return(0);
+	   } else {
+	    	fprintf(stderr, "Opened database successfully\n");
+	   }
+
+	   ifstream file("files/card_transaction.csv");
+		if (!file.is_open()) {
+			cerr << "File not opened\n";
+			return 0;
+		}
+
+		string line;
+		getline(file, line);
+		vector<string> headers = split(line, ',');
+
+   		/* Create SQL statement */
+   		string insertStr;
+   		insertStr = "INSERT INTO transactions (";
+   		for (auto& str: headers) {
+			string quoted = quoteAndEsc(str);
+			insertStr += quoted + ",";
+		}
+		insertStr.pop_back();
+		insertStr += ") VALUES";
+
+
+		// Insert in batch to avoid reading whole file in at once
+		for (int i = 0; i < 30; i++) {
+			string sql = insertStr;
+			threadsafe_queue<string> data_queue;
+			thread t1(readth, ref(data_queue), ref(file));
+
+			string query1;
+			string query2;
+
+			thread t2(processth, ref(data_queue), ref(query1));
+			thread t3(processth, ref(data_queue), ref(query2));
+
+			t1.join();
+			t2.join();
+			t3.join();
+
+			sql += query1 + query2;
+			sql.pop_back();
+			sql += ";";
+
+			cout << "batch " << i << endl;
+
+			/* Execute SQL statement */
+			rc = sqlite3_exec(db, sql.c_str(), 0, 0, &zErrMsg);
+	   
+		   if( rc != SQLITE_OK ){
+				fprintf(stderr, "SQL error: %s\n", zErrMsg);
+				sqlite3_free(zErrMsg);
+		   } else {
+		    	fprintf(stdout, "Records created successfully\n");
+		   }
+		   
+		}
+
+		// Final batch for leftovers
+		string sql = insertStr;
+
+		while(getline(file, line)) {
+			vector<string> row = split(line, ',');
+			string temp = " (";
+			for (auto& str: row) {
+				string quoted = quoteAndEsc(str);
+				temp += quoted + ",";
+			}
+			temp.pop_back();
+			temp += "),";
+			sql += temp;
+		}
+		sql.pop_back();
+		sql += ";";
+
+
+	   rc = sqlite3_exec(db, sql.c_str(), 0, 0, &zErrMsg);
+	   if( rc != SQLITE_OK ){
+			fprintf(stderr, "SQL error: %s\n", zErrMsg);
+			sqlite3_free(zErrMsg);
+	   } else {
+	    	fprintf(stdout, "Records created successfully\n");
+	   }
+	   sqlite3_close(db);
+	   return 0;
+	}
+
+	int deleteTable() {
+   		sqlite3 *db;
+   		char *zErrMsg = 0;
+   		int rc;
+   		string sql;
+
+   		/* Open database */
+   		rc = sqlite3_open("transaction.db", &db);
+   
+   		if( rc ) {
+      		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+      		return(0);
+   		} else {
+      		fprintf(stderr, "Opened database successfully\n");
+   		}
+
+	   /* Create SQL statement */
+	   sql = "DROP TABLE users;";
+
+	   /* Execute SQL statement */
+	   rc = sqlite3_exec(db, sql.c_str(), callback, 0, &zErrMsg);
+	   
+	   if( rc != SQLITE_OK ) {
+	      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+	      sqlite3_free(zErrMsg);
+	   } else {
+	      fprintf(stdout, "Operation done successfully\n");
+	   }
+   		sqlite3_close(db);
+	   	return 0;
 	}
 
 	void gen_user() {
-		set<string> records;
-		string line;
-	    ifstream file("files/card_transaction.csv");
+		unordered_set<string> records;
 
-		if(file.is_open()){
-			getline(file, line);
-			while(getline(file, line)){
-				vector<string> tokens = split(line, ',');
-				records.insert(tokens[0]);
-			}
-		} 
-		file.close();
+		sqlite3 *db;
+   		char *zErrMsg = 0;
+   		int rc;
+   		string sql;
+
+   		/* Open database */
+   		rc = sqlite3_open("transaction.db", &db);
+   
+   		if( rc ) {
+      		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+      		return;
+   		} else {
+      		fprintf(stderr, "Opened database successfully\n");
+   		}
+
+   		/* Create user table */
+		sql = "CREATE TABLE users (User, firstname, lastname, email );";
+
+		rc = sqlite3_exec(db, sql.c_str(), 0, 0, &zErrMsg);
+
+		if( rc != SQLITE_OK ) {
+	      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+	      sqlite3_free(zErrMsg);
+	   } else {
+	      fprintf(stdout, "Operation done successfully\n");
+	   }
+	   string userq = "INSERT INTO users ( User, firstname, lastname, email ) VALUES ";
+
+
+
+	   /* Get user column */
+	   sql = "SELECT User from transactions";
+
+	   rc = sqlite3_exec(db, sql.c_str(), set_callback, &records, &zErrMsg);
+	   
+	   if( rc != SQLITE_OK ) {
+	      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+	      sqlite3_free(zErrMsg);
+	   } else {
+	      fprintf(stdout, "Operation done successfully\n");
+	   }
+
 
 		unordered_set<string> unique_names;
 
@@ -170,10 +409,26 @@ namespace dataGen {
 	    	xmlNewChild(node1, NULL, BAD_CAST "lastName", BAD_CAST ln.c_str());
 	    	string em = fn + "." + ln + "@smoothceeplusplus.com";
 	    	xmlNewChild(node1, NULL, BAD_CAST "email", BAD_CAST em.c_str());
+
+	    	userq += " (" + quote((*itr)) + "," + quote(fn) + "," + quote(ln) + "," + quote(em) + "),";
 		}
 		xmlSaveFormatFileEnc("files/user.xml", doc, "UTF-8", 1);
 	    xmlFreeDoc(doc);
 	    xmlCleanupParser();
+
+	    /* Create table for users */
+	    userq.pop_back();
+		userq += ";";
+		rc = sqlite3_exec(db, userq.c_str(), 0, 0, &zErrMsg);
+	   
+	   if( rc != SQLITE_OK ) {
+	      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+	      sqlite3_free(zErrMsg);
+	   } else {
+	      fprintf(stdout, "Operation done successfully\n");
+	   }
+
+	    sqlite3_close(db);
 
 	}
 
@@ -210,19 +465,51 @@ namespace dataGen {
 		return card_num;
 	}
 
-	void gen_cards() {
-		unordered_map<string, set<string> > records;
-		string line;
-	    ifstream file("files/card_transaction.csv");
 
-		if(file.is_open()){
-			getline(file, line);
-			while(getline(file, line)){
-				vector<string> tokens = split(line, ',');
-				records[tokens[0]].insert(tokens[1]);
-			}
-		}
-		file.close();
+	void gen_cards() {
+		map<string, set<string>> records;
+
+		sqlite3 *db;
+   		char *zErrMsg = 0;
+   		int rc;
+   		string sql;
+
+   		/* Open database */
+   		rc = sqlite3_open("transaction.db", &db);
+   
+   		if( rc ) {
+      		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+      		return;
+   		} else {
+      		fprintf(stderr, "Opened database successfully\n");
+   		}
+
+   		/* Create cards table */
+		sql = "CREATE TABLE cards (User, Card, cardNum);";
+
+		rc = sqlite3_exec(db, sql.c_str(), 0, 0, &zErrMsg);
+
+		if( rc != SQLITE_OK ) {
+	      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+	      sqlite3_free(zErrMsg);
+	   } else {
+	      fprintf(stdout, "Operation done successfully\n");
+	   }
+	   string cardq = "INSERT INTO cards ( User, Card, cardNum ) VALUES ";
+
+
+
+	   /* Get user, card column */
+	   sql = "SELECT User, Card from transactions";
+
+	   rc = sqlite3_exec(db, sql.c_str(), map_set_callback, &records, &zErrMsg);
+	   
+	   if( rc != SQLITE_OK ) {
+	      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+	      sqlite3_free(zErrMsg);
+	   } else {
+	      fprintf(stdout, "Operation done successfully\n");
+	   }
 
 		unordered_set<string> unique_cards;
 		xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
@@ -240,12 +527,27 @@ namespace dataGen {
 				string credit_card = credit_card_gen(unique_cards);
 				xmlNodePtr card = xmlNewChild(node2, NULL, BAD_CAST "card", BAD_CAST credit_card.c_str());
 				xmlNewProp(card, BAD_CAST "id", BAD_CAST (*itr).c_str());
+
+				cardq += " (" + quote(it->first) + "," + quote((*itr)) + "," + quote(credit_card) + "),";
 			}
 		}
 
 		xmlSaveFormatFileEnc("files/credit_cards.xml", doc, "UTF-8", 1);
 	    xmlFreeDoc(doc);
 	    xmlCleanupParser();
+
+	    cardq.pop_back();
+		cardq += ";";
+		rc = sqlite3_exec(db, cardq.c_str(), 0, 0, &zErrMsg);
+	   
+	   if( rc != SQLITE_OK ) {
+	      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+	      sqlite3_free(zErrMsg);
+	   } else {
+	      fprintf(stdout, "Operation done successfully\n");
+	   }
+
+	    sqlite3_close(db);
 	}
 
 	vector<string> getMercFiles(string filename) {
@@ -265,18 +567,49 @@ namespace dataGen {
 
 
 	void gen_merchants() {
-		unordered_map<string, string> records;
-		string line;
-	    ifstream file("files/card_transaction.csv");
+		map<string, string> records;
 
-		if(file.is_open()){
-			getline(file, line);
-			while(getline(file, line)){
-				vector<string> tokens = split(line, ',');
-				records[tokens[8]] = tokens[12];
-			}
-		}
-		file.close();
+		sqlite3 *db;
+   		char *zErrMsg = 0;
+   		int rc;
+   		string sql;
+
+   		/* Open database */
+   		rc = sqlite3_open("transaction.db", &db);
+   
+   		if( rc ) {
+      		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+      		return;
+   		} else {
+      		fprintf(stderr, "Opened database successfully\n");
+   		}
+
+   		/* Create merchants table */
+		sql = "CREATE TABLE merchants (mid, mname, MCC);";
+
+		rc = sqlite3_exec(db, sql.c_str(), 0, 0, &zErrMsg);
+
+		if( rc != SQLITE_OK ) {
+	      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+	      sqlite3_free(zErrMsg);
+	   } else {
+	      fprintf(stdout, "Operation done successfully\n");
+	   }
+	   string merchq = "INSERT INTO merchants ( mid, mname, MCC) VALUES ";
+
+
+
+	   /* Get user, card column */
+	   sql = "SELECT `Merchant Name`, MCC from transactions";
+
+	   rc = sqlite3_exec(db, sql.c_str(), map_callback, &records, &zErrMsg);
+	   
+	   if( rc != SQLITE_OK ) {
+	      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+	      sqlite3_free(zErrMsg);
+	   } else {
+	      fprintf(stdout, "Operation done successfully\n");
+	   }
 
 		vector<string> mNames = getMercFiles("./resources/merchants/merchant.names");
 
@@ -288,27 +621,76 @@ namespace dataGen {
 	    for (auto it = records.begin(); it != records.end(); it++) {
 	    	xmlNodePtr node1 = xmlNewChild(node, NULL, BAD_CAST "merchant", NULL);
 	    	xmlNewProp(node1, BAD_CAST "id", BAD_CAST it->first.c_str());
-	    	xmlNewChild(node1, NULL, BAD_CAST "merchantName", BAD_CAST mNames[rand() % mNames.size()].c_str());
+	    	string mname = mNames[rand() % mNames.size()];
+	    	xmlNewChild(node1, NULL, BAD_CAST "merchantName", BAD_CAST mname.c_str());
 	    	xmlNewChild(node1, NULL, BAD_CAST "mcc", BAD_CAST it->second.c_str());
+
+	    	merchq += " (" + quote(it->first) + "," + quote(mname) + "," + quote(it->second) + "),";
 		}
 		xmlSaveFormatFileEnc("files/merchants.xml", doc, "UTF-8", 1);
 	    xmlFreeDoc(doc);
 	    xmlCleanupParser();
+
+	    merchq.pop_back();
+		merchq += ";";
+		rc = sqlite3_exec(db, merchq.c_str(), 0, 0, &zErrMsg);
+	   
+	   if( rc != SQLITE_OK ) {
+	      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+	      sqlite3_free(zErrMsg);
+	   } else {
+	      fprintf(stdout, "Operation done successfully\n");
+	   }
+
+	    sqlite3_close(db);
 	}
 
 	void gen_states() {
-		unordered_map<string, set<string> > records;
-		string rrow;
-	    ifstream file("files/card_transaction.csv");
+		map<string, set<string> > records;
 
-		if(file.is_open()){
-			getline(file, rrow);
-			while(getline(file, rrow)){
-				vector<string> tokens = split(rrow, ',');
-				records[tokens[10]].insert(tokens[11]);
-			}
-		}
-		file.close();
+		sqlite3 *db;
+   		char *zErrMsg = 0;
+   		int rc;
+   		string sql;
+
+   		/* Open database */
+   		rc = sqlite3_open("transaction.db", &db);
+   
+   		if( rc ) {
+      		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+      		return;
+   		} else {
+      		fprintf(stderr, "Opened database successfully\n");
+   		}
+
+   		/* Create cards table */
+		sql = "CREATE TABLE states (sid, state, capital, zipcode);";
+
+		rc = sqlite3_exec(db, sql.c_str(), 0, 0, &zErrMsg);
+
+		if( rc != SQLITE_OK ) {
+	      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+	      sqlite3_free(zErrMsg);
+	   } else {
+	      fprintf(stdout, "Operation done successfully\n");
+	   }
+	   string stateq = "INSERT INTO states ( sid, state, capital, zipcode ) VALUES ";
+
+
+
+	   /* Get user, card column */
+	   sql = "SELECT `Merchant State`, Zip from transactions";
+
+	   rc = sqlite3_exec(db, sql.c_str(), map_set_callback, &records, &zErrMsg);
+	   
+	   if( rc != SQLITE_OK ) {
+	      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+	      sqlite3_free(zErrMsg);
+	   } else {
+	      fprintf(stdout, "Operation done successfully\n");
+	   }
+
+		
 
 		vector<vector<string>> states;
 		vector<string> row;
@@ -343,62 +725,115 @@ namespace dataGen {
 	    	xmlNodePtr zipNode = xmlNewChild(stateNode, NULL, BAD_CAST "zipcodes", NULL);
 	        for (auto itr = st.begin(); itr != st.end(); itr++) {
 	        	xmlNewChild(zipNode, NULL, BAD_CAST "zipcode", BAD_CAST (*itr).c_str());
+
+	        	stateq += " (" + quote(states[i][2]) + "," + quote(states[i][1]) + "," + quote(states[i][3]) + "," + quote((*itr)) + "),";
 	        }
 	    }
 	    xmlSaveFormatFileEnc("files/states.xml", doc, "UTF-8", 1);
 	    xmlFreeDoc(doc);
 	    xmlCleanupParser();
+
+	    stateq.pop_back();
+		stateq += ";";
+		rc = sqlite3_exec(db, stateq.c_str(), 0, 0, &zErrMsg);
+	   
+	   if( rc != SQLITE_OK ) {
+	      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+	      sqlite3_free(zErrMsg);
+	   } else {
+	      fprintf(stdout, "Operation done successfully\n");
+	   }
+
+	    sqlite3_close(db);
 	}
 
-	int signXML(const char* filename) {
-		/* Init libxml and libxslt libraries */
-	    xmlInitParser();
-	    LIBXML_TEST_VERSION
-	    xmlLoadExtDtdDefaultValue = XML_DETECT_IDS | XML_COMPLETE_ATTRS;
-	    xmlSubstituteEntitiesDefault(1);
 
-	    /* Init xmlsec library */
-	    if(xmlSecInit() < 0) {
-	        fprintf(stderr, "Error: xmlsec initialization failed.\n");
-	        return(-1);
-	    }
+	// void atLeastOneInsufficient() {
+	// 	unordered_map<string, set<string>> records;
 
-	    /* Load default crypto engine if we are supporting dynamic
-	     * loading for xmlsec-crypto libraries. Use the crypto library
-	     * name ("openssl", "nss", etc.) to load corresponding 
-	     * xmlsec-crypto library.
-	     */
-	#ifdef XMLSEC_CRYPTO_DYNAMIC_LOADING
-	    if(xmlSecCryptoDLLoadLibrary(NULL) < 0) {
-	        fprintf(stderr, "Error: unable to load default xmlsec-crypto library. Make sure\n"
-	                        "that you have it installed and check shared libraries path\n"
-	                        "(LD_LIBRARY_PATH and/or LTDL_LIBRARY_PATH) environment variables.\n");
-	        return(-1);     
-	    }
-	#endif /* XMLSEC_CRYPTO_DYNAMIC_LOADING */
+	// 	vector<string> init({"files/splitfiles/header"});
+	// 	map_set_reader(records, init, 0, 14, true);
 
-	    /* Init crypto library */
-	    if(xmlSecCryptoAppInit(NULL) < 0) {
-	        fprintf(stderr, "Error: crypto initialization failed.\n");
-	        return(-1);
-	    }
+	// 	// Read in rest of filesnames
+	// 	vector<string> filenames;
+	// 	const filesystem::path splitFiles{"files/splitfiles"};
+	// 	const regex e{R"(.*x.{2}$)"};
+	// 	for (auto const& entry: filesystem::directory_iterator{splitFiles}) {
+	// 		if (regex_match(entry.path().string(), e)) {
+	// 			filenames.push_back(entry.path().string());
+	// 		}
+	// 	}
 
-	    /* Init xmlsec-crypto library */
-	    if(xmlSecCryptoInit() < 0) {
-	        fprintf(stderr, "Error: xmlsec-crypto initialization failed.\n");
-	        return(-1);
-	    }
+	// 	// Divide files between threads
+	// 	vector<vector<string>> name_vec;
+	// 	int numThreads = 6;
+	// 	int pivot = filenames.size() / numThreads;
+	// 	for (int i = 0; i < numThreads - 1; i++) {
+	// 		vector<string> temp(filenames.begin() + (i * pivot), filenames.begin() + ((i + 1) * pivot));
+	// 		name_vec.push_back(temp);
+	// 	}
+	// 	vector<string> temp(filenames.begin() + ((numThreads - 1) * pivot), filenames.end());
+	// 	name_vec.push_back(temp);
 
-	    if(sign_file(filename, "/home/server_ca/private/document.key") < 0) {
-	        return(-1);
-	    }    
-	    
-	    /* Shutdown library */
-	    xmlSecCryptoShutdown();
-	    xmlSecCryptoAppShutdown();
-	    xmlSecShutdown();
+	// 	vector<thread> tvec(numThreads);
+	// 	for (int i = 0; i < numThreads; i++) {
+	// 		tvec[i] = thread(map_set_reader, ref(records), ref(name_vec[i]), 0, 14, false);
+	// 	}
 
-	    xmlCleanupParser();
-	    return 0;
-	}
+	// 	for (auto& entry: tvec) {
+	// 		entry.join();
+	// 	}
+
+	// 	xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+	//     xmlNodePtr root_node = xmlNewNode(NULL, BAD_CAST "root");
+	//     xmlDocSetRootElement(doc, root_node);
+	//     xmlNodePtr node = xmlNewChild(root_node, NULL, BAD_CAST "users", NULL);
+
+	//     for (auto it = records.begin(); it != records.end(); it++) {
+	//     	xmlNodePtr node1 = xmlNewChild(node, NULL, BAD_CAST "user", NULL);
+	//     	xmlNewProp(node1, BAD_CAST "id", BAD_CAST it->first.c_str());
+	//     	xmlNodePtr node2 = xmlNewChild(node1, NULL, BAD_CAST "cards", NULL);
+
+	// 		set<string> st = it->second;
+	// 		for (auto itr = st.begin(); itr != st.end(); itr++) {
+	// 			// string credit_card = credit_card_gen(unique_cards);
+	// 			// xmlNodePtr card = xmlNewChild(node2, NULL, BAD_CAST "card", BAD_CAST credit_card.c_str());
+	// 			xmlNewProp(node2, BAD_CAST "id", BAD_CAST (*itr).c_str());
+	// 		}
+	// 	}
+
+	// 	xmlSaveFormatFileEnc("files/test.xml", doc, "UTF-8", 1);
+	//     xmlFreeDoc(doc);
+	//     xmlCleanupParser();
+
+		// int count = 0;
+		// for (auto it = records.begin(); it != records.end(); it++) {
+		// 	set<string> st = it->second;
+		// 	for (auto itr = st.begin(); itr != st.end(); itr++) {
+		// 		if ((*itr) == "\"Insufficient Balance\"") {
+		// 			count++;
+		// 			break;
+		// 		}
+		// 	}
+		// }
+
+		// xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+	 //    xmlNodePtr root_node = xmlNewNode(NULL, BAD_CAST "root");
+	 //    xmlDocSetRootElement(doc, root_node);
+	 //    xmlNodePtr node = xmlNewChild(root_node, NULL, BAD_CAST "Percentage_of_users_with_insufficient_balance", NULL);
+	 //    xmlNewChild(node, NULL, BAD_CAST "Percentage", BAD_CAST to_string(count/records.size()).c_str());
+		// xmlSaveFormatFileEnc("files/atLeastOneInsufficient.xml", doc, "UTF-8", 1);
+	 //    xmlFreeDoc(doc);
+	 //    xmlCleanupParser();
+	// }
+}
+
+int main() {
+	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+	// dataGen::gen_states();
+
+	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+	std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::seconds> (end - begin).count() << "[s]" << std::endl;
+	return 0;
 }

@@ -21,7 +21,7 @@ make install
 
 
 # configs for sql3
-# cd /home/sqlite3
+# cd /home/sqlite
 # ./configure --prefix=/usr/local
 # make
 # make install

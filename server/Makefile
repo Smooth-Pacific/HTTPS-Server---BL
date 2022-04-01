@@ -1,11 +1,14 @@
 CC = clang++
-CFLAGS = -std=c++17 -pthreads -g -W -Wall -g $(shell pkg-config --cflags xmlsec1)
+CFLAGS = -std=c++17 -pthreads -g -W -Wall $(shell pkg-config --cflags xmlsec1)
+SHORTFLAGS = -std=c++17 -pthreads -g -W -Wall -lsqlite3
 INCLUDE = -Iinclude -I/home/include -I/usr/local/include -I/usr/include/libxml2 -I/usr/include/xmlsec1
-LDFLAGS = -L/usr/local/lib 
-LIBRARIES = -L. -lhttpserver -lssl -lcrypto -lxml2 $(shell pkg-config --libs xmlsec1) 
+LDFLAGS = -L/usr/local/lib
+LIBRARIES = -L. -lhttpserver -lxml2 $(shell pkg-config --libs xmlsec1) -lsqlite3
 
 TARGET = main
-OTHER = startConfig.cpp logging.cpp dataGen.cpp
+OTHER = startConfig.cpp logging.cpp DSign.cpp
+DATAGEN = dataGen
+test = binary
 
 .PHONY: all clean
 
@@ -14,6 +17,11 @@ all: $(TARGET)
 
 $(TARGET): $(TARGET).cpp
 	$(CC) $(INCLUDE) $(LDFLAGS) $(CFLAGS) $(LIBRARIES) -o server $(TARGET).cpp $(OTHER) 
+
+data: $(DATAGEN)
+	
+$(DATAGEN): $(DATAGEN).cpp
+	$(CC) $(INCLUDE) $(LDFLAGS) $(SHORTFLAGS) -lxml2 -o exec $(DATAGEN).cpp 
 
 
 

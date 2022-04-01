@@ -3,7 +3,7 @@
 #include <fstream>
 #include <string>
 #include <iostream>
-#include "dataGen.h"
+#include "DSign.h"
 
 using namespace httpserver;
 
@@ -18,21 +18,17 @@ public:
 
         if (req.get_digested_user() == user && req.check_digest_auth("MyRealm", pass, 300, &reload_nonce)) {
             if (req.get_arg("arg1") == "user") {
-                dataGen::gen_user();
-                dataGen::signXML("files/user.xml");
-                return std::shared_ptr<file_response>(new file_response("files/user.xml", 200, "application/xml"));
+                DSign::signXML("files/user.xml", "files/user-s.xml");
+                return std::shared_ptr<file_response>(new file_response("files/user-s.xml", 200, "application/xml"));
             } else if (req.get_arg("arg1") == "creditcard") {
-                dataGen::gen_cards();
-                dataGen::signXML("files/credit_cards.xml");
-                return std::shared_ptr<file_response>(new file_response("files/credit_cards.xml", 200, "application/xml"));
+                DSign::signXML("files/credit_cards.xml", "files/credit_cards-s.xml");
+                return std::shared_ptr<file_response>(new file_response("files/credit_cards-s.xml", 200, "application/xml"));
             } else if (req.get_arg("arg1") == "merchants") {
-                dataGen::gen_merchants();
-                dataGen::signXML("files/merchants.xml");
-                return std::shared_ptr<file_response>(new file_response("files/merchants.xml", 200, "application/xml"));
+                DSign::signXML("files/merchants.xml", "files/merchants-s.xml");
+                return std::shared_ptr<file_response>(new file_response("files/merchants-s.xml", 200, "application/xml"));
             } else if (req.get_arg("arg1") == "states") {
-                dataGen::gen_states();
-                dataGen::signXML("files/states.xml");
-                return std::shared_ptr<file_response>(new file_response("files/states.xml", 200, "application/xml"));
+                DSign::signXML("files/states.xml", "files/states-s.xml");
+                return std::shared_ptr<file_response>(new file_response("files/states-s.xml", 200, "application/xml"));
             } else {
                 return std::shared_ptr<string_response>(new string_response("resource not available\n", 404, "text/plain"));
             }

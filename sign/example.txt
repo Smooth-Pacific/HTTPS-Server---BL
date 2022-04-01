@@ -1,1 +1,1 @@
- akdfj aldkj faldHello, this is a sample text file.
+Hello, this is a sample text file.

@@ -11,3 +11,6 @@ openssl dgst -sha256 -sign /home/server_ca/private/document.key -out ${file}.sig
 echo "Signature created"
 openssl x509 -in /home/server_ca/certs/document.crt
 openssl dgst -sha256 -verify <(openssl x509 -in /home/server_ca/certs/document.crt -pubkey -noout) -signature ${file}.signature $file
+
+
+# openssl dgst -sha256 -verify <(openssl x509 -in /home/server_ca/certs/document.crt -pubkey -noout) -signature example.txt.signature example.txt

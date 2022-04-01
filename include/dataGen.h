@@ -4,8 +4,6 @@ namespace dataGen {
 
     std::vector<std::string> split (const std::string &s, char delim);
 
-    int sign_file(const char* xml_file, const char* key_file);
-
     void gen_user();
 
     bool luhn_alg(std::string cnum);
@@ -19,6 +17,4 @@ namespace dataGen {
     void gen_merchants();
 
     void gen_states();
-
-    int signXML(const char* filename);
 }
