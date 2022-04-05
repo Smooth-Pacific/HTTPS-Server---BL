@@ -21,9 +21,6 @@
 #include <chrono>
 #include "safeq.h"
 #include <thread>
-#include <mutex>
-// #include <atomic>
-// #include <condition_variable>
 #include <sqlite3.h> 
 
 
@@ -51,7 +48,7 @@ namespace dataGen {
 	}
 
 	// Function to escape and quote strings
-	string quoteAndEsc(string word) {
+	string quoteAndEsc(const string& word) {
 		std::string esc;
 		const char * src = word.c_str();
 		while (char c = *src++) {
@@ -63,17 +60,8 @@ namespace dataGen {
 		return "'" + esc + "'";
 	}
 
-	string quote(string word) {
+	string quote(const string& word) {
 		return "'" + word + "'";
-	}
-
-	int callback(__attribute__((unused)) void *NotUsed, int argc, char **argv, char **azColName) {
-		int i;
-		for(i = 0; i<argc; i++) {
-			printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-		}
-		printf("\n");
-		return 0;
 	}
 
 	int set_callback(void *data, __attribute__((unused)) int argc, char **argv, __attribute__((unused)) char **azColName) {
@@ -151,7 +139,7 @@ namespace dataGen {
 		sql += ");";
 
 		/* Execute SQL statement */
-		rc = sqlite3_exec(db, sql.c_str(), callback, 0, &zErrMsg);
+		rc = sqlite3_exec(db, sql.c_str(), 0, 0, &zErrMsg);
 
 		if( rc != SQLITE_OK ){
 			fprintf(stderr, "SQL error: %s\n", zErrMsg);
@@ -184,7 +172,6 @@ namespace dataGen {
 		string end = "END";
 		data_queue.push(end);
 		data_queue.push(end);
-		// data_queue.push(end);
 	}
 
 	void processth(threadsafe_queue<string>& data_queue, string& sql) {
@@ -306,37 +293,6 @@ namespace dataGen {
 	   return 0;
 	}
 
-	int deleteTable() {
-   		sqlite3 *db;
-   		char *zErrMsg = 0;
-   		int rc;
-   		string sql;
-
-   		/* Open database */
-   		rc = sqlite3_open("transaction.db", &db);
-   
-   		if( rc ) {
-      		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-      		return(0);
-   		} else {
-      		fprintf(stderr, "Opened database successfully\n");
-   		}
-
-	   /* Create SQL statement */
-	   sql = "DROP TABLE users;";
-
-	   /* Execute SQL statement */
-	   rc = sqlite3_exec(db, sql.c_str(), callback, 0, &zErrMsg);
-	   
-	   if( rc != SQLITE_OK ) {
-	      fprintf(stderr, "SQL error: %s\n", zErrMsg);
-	      sqlite3_free(zErrMsg);
-	   } else {
-	      fprintf(stdout, "Operation done successfully\n");
-	   }
-   		sqlite3_close(db);
-	   	return 0;
-	}
 
 	void gen_user() {
 		unordered_set<string> records;
@@ -747,93 +703,4 @@ namespace dataGen {
 	    sqlite3_close(db);
 	}
 
-
-	// void atLeastOneInsufficient() {
-	// 	unordered_map<string, set<string>> records;
-
-	// 	vector<string> init({"files/splitfiles/header"});
-	// 	map_set_reader(records, init, 0, 14, true);
-
-	// 	// Read in rest of filesnames
-	// 	vector<string> filenames;
-	// 	const filesystem::path splitFiles{"files/splitfiles"};
-	// 	const regex e{R"(.*x.{2}$)"};
-	// 	for (auto const& entry: filesystem::directory_iterator{splitFiles}) {
-	// 		if (regex_match(entry.path().string(), e)) {
-	// 			filenames.push_back(entry.path().string());
-	// 		}
-	// 	}
-
-	// 	// Divide files between threads
-	// 	vector<vector<string>> name_vec;
-	// 	int numThreads = 6;
-	// 	int pivot = filenames.size() / numThreads;
-	// 	for (int i = 0; i < numThreads - 1; i++) {
-	// 		vector<string> temp(filenames.begin() + (i * pivot), filenames.begin() + ((i + 1) * pivot));
-	// 		name_vec.push_back(temp);
-	// 	}
-	// 	vector<string> temp(filenames.begin() + ((numThreads - 1) * pivot), filenames.end());
-	// 	name_vec.push_back(temp);
-
-	// 	vector<thread> tvec(numThreads);
-	// 	for (int i = 0; i < numThreads; i++) {
-	// 		tvec[i] = thread(map_set_reader, ref(records), ref(name_vec[i]), 0, 14, false);
-	// 	}
-
-	// 	for (auto& entry: tvec) {
-	// 		entry.join();
-	// 	}
-
-	// 	xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
-	//     xmlNodePtr root_node = xmlNewNode(NULL, BAD_CAST "root");
-	//     xmlDocSetRootElement(doc, root_node);
-	//     xmlNodePtr node = xmlNewChild(root_node, NULL, BAD_CAST "users", NULL);
-
-	//     for (auto it = records.begin(); it != records.end(); it++) {
-	//     	xmlNodePtr node1 = xmlNewChild(node, NULL, BAD_CAST "user", NULL);
-	//     	xmlNewProp(node1, BAD_CAST "id", BAD_CAST it->first.c_str());
-	//     	xmlNodePtr node2 = xmlNewChild(node1, NULL, BAD_CAST "cards", NULL);
-
-	// 		set<string> st = it->second;
-	// 		for (auto itr = st.begin(); itr != st.end(); itr++) {
-	// 			// string credit_card = credit_card_gen(unique_cards);
-	// 			// xmlNodePtr card = xmlNewChild(node2, NULL, BAD_CAST "card", BAD_CAST credit_card.c_str());
-	// 			xmlNewProp(node2, BAD_CAST "id", BAD_CAST (*itr).c_str());
-	// 		}
-	// 	}
-
-	// 	xmlSaveFormatFileEnc("files/test.xml", doc, "UTF-8", 1);
-	//     xmlFreeDoc(doc);
-	//     xmlCleanupParser();
-
-		// int count = 0;
-		// for (auto it = records.begin(); it != records.end(); it++) {
-		// 	set<string> st = it->second;
-		// 	for (auto itr = st.begin(); itr != st.end(); itr++) {
-		// 		if ((*itr) == "\"Insufficient Balance\"") {
-		// 			count++;
-		// 			break;
-		// 		}
-		// 	}
-		// }
-
-		// xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
-	 //    xmlNodePtr root_node = xmlNewNode(NULL, BAD_CAST "root");
-	 //    xmlDocSetRootElement(doc, root_node);
-	 //    xmlNodePtr node = xmlNewChild(root_node, NULL, BAD_CAST "Percentage_of_users_with_insufficient_balance", NULL);
-	 //    xmlNewChild(node, NULL, BAD_CAST "Percentage", BAD_CAST to_string(count/records.size()).c_str());
-		// xmlSaveFormatFileEnc("files/atLeastOneInsufficient.xml", doc, "UTF-8", 1);
-	 //    xmlFreeDoc(doc);
-	 //    xmlCleanupParser();
-	// }
-}
-
-int main() {
-	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-
-	// dataGen::gen_states();
-
-	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-	std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::seconds> (end - begin).count() << "[s]" << std::endl;
-	return 0;
 }
