@@ -8,7 +8,7 @@ LIBRARIES = -L. -lhttpserver -lxml2 $(shell pkg-config --libs xmlsec1) -lsqlite3
 TARGET = main
 OTHER = startConfig.cpp logging.cpp DSign.cpp
 DATAGEN = dataGen
-test = binary
+DATAPROCESS = dataProcess
 
 .PHONY: all clean
 
@@ -23,6 +23,11 @@ data: $(DATAGEN)
 $(DATAGEN): $(DATAGEN).cpp
 	$(CC) $(INCLUDE) $(LDFLAGS) $(SHORTFLAGS) -lxml2 -o exec $(DATAGEN).cpp 
 
+process: $(DATAPROCESS)
+	
+$(DATAPROCESS): $(DATAPROCESS).cpp
+	$(CC) $(INCLUDE) $(LDFLAGS) $(SHORTFLAGS) -lxml2 -o proc $(DATAPROCESS).cpp $(DATAGEN).cpp 
+
 
 
 curl:
@@ -33,6 +38,8 @@ xml:
 	curl -v -XGET --digest --user myuser:mypass -O 'https://localhost:8080/mime/xml'
 user:
 	curl -v -XGET --digest --user myuser:mypass -O 'https://localhost:8080/transaction/user'
+signed:
+	curl -v -XGET --digest --user myuser:mypass -O 'https://localhost:8080/transaction/process/1/percentageFraudByYear'
 post:
 	curl -v -XPOST -H "Content-Type:text/xml" -H "Accept: application/xml" -d @files/sample.xml --digest --user myuser:mypass 'https://localhost:8080/mime/xml'
 
@@ -40,6 +47,7 @@ clean:
 	rm -f *.o
 	rm -f server
 	rm -f exec
+	rm -f proc
 	rm -f log.txt
 	rm -rf apmlogs
 	rm -rf data_throughput

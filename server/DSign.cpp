@@ -20,12 +20,12 @@ namespace DSign {
 	    xmlNodePtr refNode = NULL;
 	    xmlNodePtr keyInfoNode = NULL;
 	    xmlSecDSigCtxPtr dsigCtx = NULL;
-	    int res = -1;
+	    
 	    
 	    /* load doc file */
 	    doc = xmlParseFile(xml_file);
 	    if ((doc == NULL) || (xmlDocGetRootElement(doc) == NULL)){
-	        return 0;      
+	        return -1;      
 	    }
 	    /* create signature template for RSA-SHA1 enveloped signature */
 	    signNode = xmlSecTmplSignatureCreate(doc, xmlSecTransformExclC14NId, xmlSecTransformRsaSha1Id, NULL);
@@ -35,22 +35,27 @@ namespace DSign {
 	    refNode = xmlSecTmplSignatureAddReference(signNode, xmlSecTransformSha1Id, NULL, NULL, NULL);
 	    /* add enveloped transform */
 	    if(xmlSecTmplReferenceAddTransform(refNode, xmlSecTransformEnvelopedId) == NULL) {
-	        return 0;              
+	    	xmlFreeDoc(doc); 
+	        return -1;              
 	    }
 	    /* add <dsig:KeyInfo/> and <dsig:KeyName/> nodes to put key name in the signed document */
 	    keyInfoNode = xmlSecTmplSignatureEnsureKeyInfo(signNode, NULL);
 	    if(xmlSecTmplKeyInfoAddKeyName(keyInfoNode, NULL) == NULL) {
-	        return 0;              
+	    	xmlFreeDoc(doc); 
+	        return -1;              
 	    }
 	    /* create signature context */
 	    dsigCtx = xmlSecDSigCtxCreate(NULL);
 	    /* load private key, assuming that there is not password */
 	    dsigCtx->signKey = xmlSecCryptoAppKeyLoad(key_file, xmlSecKeyDataFormatPem, NULL, NULL, NULL);
 	    if(xmlSecDSigCtxSign(dsigCtx, signNode) < 0) {
-	        return 0;
+	    	if(dsigCtx != NULL) {
+	        	xmlSecDSigCtxDestroy(dsigCtx);
+	    	}
+	        xmlFreeDoc(doc); 
+	        return -1;
 	    }
 	    xmlSaveFormatFileEnc(outfile, doc, "UTF-8", 1);
-	    res = 0;
 
 	    /* cleanup */
 	    if(dsigCtx != NULL) {
@@ -59,7 +64,7 @@ namespace DSign {
 	    if(doc != NULL) {
 	        xmlFreeDoc(doc); 
 	    }
-	    return(res);
+	    return 0;
 	}
 
 	int signXML(const char* filename, const char* outfile) {

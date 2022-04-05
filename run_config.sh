@@ -19,9 +19,3 @@ bash ../configure CPPFLAGS=-I/usr/local/include LDFLAGS=-L/usr/local/lib
 make
 make install
 
-
-# configs for sql3
-# cd /home/sqlite
-# ./configure --prefix=/usr/local
-# make
-# make install

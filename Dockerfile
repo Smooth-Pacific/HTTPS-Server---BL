@@ -53,9 +53,6 @@ RUN apt-get install -y libxml2-dev
 RUN apt-get install -y libxmlsec1-dev
 RUN apt-get install -y libsqlite3-dev
 
-# Install sql
-#RUN wget https://www.sqlite.org/2022/sqlite-autoconf-3380200.tar.gz
-#RUN mkdir sqlite3 && tar xvzf sqlite-autoconf-3380200.tar.gz -C sqlite3 --strip-components 1
 
 # Library environment variable
 ENV LD_LIBRARY_PATH="/usr/local/lib"

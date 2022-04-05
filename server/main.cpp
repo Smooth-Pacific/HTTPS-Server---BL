@@ -46,9 +46,11 @@ int main(int argc, char** argv) {
     server_resource hwr;
     mime_resource mr;
     transaction_resource tr;
+    process_transaction_resource ptr;
     ws.register_resource("/", &hwr);
     ws.register_resource("/mime/{arg1}", &mr);
     ws.register_resource("/transaction/{arg1}", &tr);
+    ws.register_resource("/transaction/process/{arg1}/{arg2}", &ptr);
     ws.start(true);
     return 0;
 }
