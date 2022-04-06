@@ -52,6 +52,7 @@ RUN apt-get install -y libssl-dev
 RUN apt-get install -y libxml2-dev
 RUN apt-get install -y libxmlsec1-dev
 RUN apt-get install -y libsqlite3-dev
+RUN apt-get install -y libtbb-dev
 
 
 # Library environment variable

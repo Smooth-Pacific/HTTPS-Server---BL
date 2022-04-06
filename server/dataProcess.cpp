@@ -20,6 +20,7 @@
 #include "safeq.h"
 #include <thread>
 #include <sqlite3.h> 
+#include <execution>
 
 
 using namespace std;
@@ -49,10 +50,10 @@ namespace dataProcess {
 		return 0;
 	}
 
-	int map_callback(void *data, __attribute__((unused)) int argc, char **argv, __attribute__((unused)) char **azColName) {
-		typedef map<string, string> table_type;
+	int singleCount_callback(void *data, __attribute__((unused)) int argc, char **argv, __attribute__((unused)) char **azColName) {
+		typedef unordered_map<string, long> table_type;
 		table_type* table = static_cast<table_type*>(data);
-		(*table)[argv[0]] = argv[1];
+		(*table)[argv[0]]++;
 		return 0;
 	}
 
@@ -250,13 +251,72 @@ namespace dataProcess {
 	    xmlCleanupParser();
 	}
 
+	void recurringTrans() {
+		unordered_map<string, long> records;
+
+		sqlite3 *db;
+   		char *zErrMsg = 0;
+   		int rc;
+   		string sql;
+
+   		/* Open database */
+   		rc = sqlite3_open("transaction.db", &db);
+   
+   		if( rc ) {
+      		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+      		return;
+   		} else {
+      		fprintf(stderr, "Opened database successfully\n");
+   		}
+
+	   /* Get merchant column */
+	   sql = "SELECT `Merchant Name` from transactions";
+
+	   rc = sqlite3_exec(db, sql.c_str(), singleCount_callback, &records, &zErrMsg);
+	   
+	   if( rc != SQLITE_OK ) {
+	      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+	      sqlite3_free(zErrMsg);
+	   } else {
+	      fprintf(stdout, "Operation done successfully\n");
+	   }
+	   sqlite3_close(db);
+
+	   // Transfer to vector to sort by value
+	   vector<pair<string, long>> map_vec;
+	   for (auto& it : records) {
+	    	map_vec.push_back(it);
+		}
+
+		sort(std::execution::par, map_vec.begin(), map_vec.end(), [](pair<string, long> a, pair<string, long> b) {
+			return a.second > b.second;
+		});
+
+	 
+		xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+	    xmlNodePtr root_node = xmlNewNode(NULL, BAD_CAST "root");
+	    xmlDocSetRootElement(doc, root_node);
+	    xmlNodePtr node = xmlNewChild(root_node, NULL, BAD_CAST "recurringTrans5", NULL);
+
+	    for (int i = 0; i < 5; i++) {
+	    	xmlNodePtr rtnode = xmlNewChild(node, NULL, BAD_CAST "Top5", BAD_CAST map_vec[i].first.c_str());
+	    	xmlNewProp(rtnode, BAD_CAST "count", BAD_CAST to_string(map_vec[i].second).c_str());
+		}
+
+		xmlSaveFormatFileEnc("files/recurringTrans5.xml", doc, "UTF-8", 1);
+	    xmlFreeDoc(doc);
+	    xmlCleanupParser();
+	}
+
+	void deposits() {}
+
 
 }
 
 int main() {
 	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-	dataProcess::percentageFraud();
+	dataProcess::deposits();
 
 	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 	std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::seconds> (end - begin).count() << "[s]" << std::endl;

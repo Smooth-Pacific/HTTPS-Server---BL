@@ -5,7 +5,7 @@ namespace dataGen {
 
     std::vector<std::string> split (const std::string &s, const char delim);
     std::string quoteAndEsc(const std::string& word);
-    std::string quote(const std::string& word);
+    inline std::string quote(const std::string& word);
 
     int set_callback(void *data, __attribute__((unused)) int argc, char **argv, __attribute__((unused)) char **azColName);
     int map_set_callback(void *data, __attribute__((unused)) int argc, char **argv, __attribute__((unused)) char **azColName);
