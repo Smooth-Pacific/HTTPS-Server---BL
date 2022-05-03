@@ -27,4 +27,6 @@ namespace dataGen {
     void gen_merchants();
 
     void gen_states();
+
+    void enrichdata();
 }

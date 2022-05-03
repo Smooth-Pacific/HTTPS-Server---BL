@@ -57,7 +57,7 @@ public:
             if (req.get_arg("arg1") == "0") {
                 return std::shared_ptr<string_response>(new string_response("File stored locally\n", 200, "text/plain"));
             } else if (req.get_arg("arg1") == "2") {
-                return std::shared_ptr<file_response>(new file_response("AWS not implemented yet", 200, "application/xml"));
+                return std::shared_ptr<string_response>(new string_response("AWS not implemented yet\n", 200, "text/plain"));
             } else if (req.get_arg("arg1") == "1") {
                 std::string path = "files/" + req.get_arg("arg2") + ".xml";
                 std::string outfile = "files/" + req.get_arg("arg2") + "-s.xml";

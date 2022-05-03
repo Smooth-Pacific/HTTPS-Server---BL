@@ -3,7 +3,7 @@
 #include <string>
 #include "startConfig.h"
 
-
+/* Constructor to initialize settings */
 startConfig::startConfig() {
 	port = getenv("PORT") ? static_cast<int>(std::stoi(getenv("PORT"))) : 8080;
 	if (port < 0 || port > 65535) {
@@ -46,10 +46,17 @@ startConfig::startConfig() {
 	}
 
     mem_key = getenv("MEM_KEY") ? static_cast<std::string>(getenv("MEM_KEY")) : "";
+    if (mem_key == "") {
+		throw std::runtime_error("invalid key given");
+	}
     
     mem_cert = getenv("MEM_CERT") ? static_cast<std::string>(getenv("MEM_CERT")) : "";
+    if (mem_cert == "") {
+		throw std::runtime_error("invalid certificate given");
+	}
 }
 
+/* Getter functions to get values */
 int startConfig::get_port() { return port; }
 
 int startConfig::get_max_connections() { return max_connections; }

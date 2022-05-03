@@ -53,7 +53,7 @@ RUN apt-get install -y libxml2-dev
 RUN apt-get install -y libxmlsec1-dev
 RUN apt-get install -y libsqlite3-dev
 RUN apt-get install -y libtbb-dev
-
+ 
 
 # Library environment variable
 ENV LD_LIBRARY_PATH="/usr/local/lib"
@@ -65,9 +65,10 @@ RUN chsh -s /bin/zsh $(whoami)
 
 # Runs configurations for library and certifications. Git clones and sets up if necessary
 COPY . /home
+
 RUN ./run_config.sh
 RUN ./create_certs.sh
 
 # Set user
-#RUN useradd -ms /bin/bash bartell
-#user bartell
+RUN adduser http
+user http

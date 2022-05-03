@@ -12,7 +12,7 @@
 #include "sys/times.h"
 #include "sys/vtimes.h"
 
-
+/* Constructor */
 Logging::Logging(std::string file) {
 	try {
 		m_file.open(file, std::fstream::in | std::fstream::out | std::fstream::app);
@@ -22,10 +22,12 @@ Logging::Logging(std::string file) {
 	}
 }
 
+/* Closes file on destruction */
 Logging::~Logging() {
 	m_file.close();
 }
 
+/* Runs log every 5 seconds */
 void Logging::run_log() {
 	while (true) {
 		log();
@@ -33,6 +35,7 @@ void Logging::run_log() {
 	}
 }
 
+/* Logs info about time, cpu, memory, etc */
 void Logging::log() {
 
     auto start = std::chrono::system_clock::now();
@@ -63,6 +66,7 @@ void Logging::log() {
     m_file.flush();
 }
 
+/* Parses line */
 int Logging::parse_line(char* line) {
     int i = strlen(line);
     const char* p = line;
@@ -74,6 +78,7 @@ int Logging::parse_line(char* line) {
     return i;
 }
 
+/* Parses line in proc filesystem */
 int Logging::parse_data(const char* file_path, const char* field) {
     FILE* file = fopen(file_path, "r");
     int value = -1;
@@ -90,7 +95,7 @@ int Logging::parse_data(const char* file_path, const char* field) {
 }
 
 
-
+/* Gets inital conditions */
 void Logging::init(){
     FILE* file1 = fopen("/proc/stat", "r");
     fscanf(file1, "cpu %llu %llu %llu %llu", &lastTotalUser, &lastTotalUserLow,
@@ -113,6 +118,7 @@ void Logging::init(){
     fclose(file2);
 }
 
+/* Gets cpu info */
 double Logging::getTotalValue(){
     double percent;
     FILE* file;
@@ -142,6 +148,7 @@ double Logging::getTotalValue(){
     return percent;
 }
 
+/* Get current value by comparing with old values */
 double Logging::getProcessValue(){
     struct tms timeSample;
     clock_t now;
