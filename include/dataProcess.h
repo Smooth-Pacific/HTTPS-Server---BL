@@ -10,6 +10,8 @@ namespace dataProcess {
     int lateNight_callback(void *data, int argc, char **argv, char **azColName);
     int bottom_callback(void *data, int argc, char **argv, char **azColName);
     int noErrors_callback(void *data, int argc, char **argv, char **azColName);
+    int groupCity_callback(void *data, int argc, char **argv, char **azColName);
+    int groupMerch_callback(void *data, int argc, char **argv, char **azColName);
     
     void atLeastOneInsufficientBalance(const char* dbfile = "transaction.db");
     void RepeatedInsufficientBalance(const char* dbfile = "transaction.db");
@@ -25,4 +27,5 @@ namespace dataProcess {
     void bottom5(const char* dbfile = "transaction.db");
     void deposits(const char* dbfile = "transaction.db");
     void noError5(const char* dbfile = "transaction.db");
+    void onlineCity(const char* dbfile = "transaction.db");
 }

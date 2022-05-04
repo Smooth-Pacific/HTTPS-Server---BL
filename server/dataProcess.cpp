@@ -114,6 +114,23 @@ int dataProcess::noErrors_callback(void *data, __attribute__((unused)) int argc,
 	return 0;
 }
 
+int dataProcess::groupMerch_callback(void *data, __attribute__((unused)) int argc, char **argv, __attribute__((unused)) char **azColName) {
+	typedef unordered_map<string, set<string>> table_type;
+	table_type* table = static_cast<table_type*>(data);
+	(*table)[argv[0]].insert(argv[1]);
+	return 0;
+}
+
+int dataProcess::groupCity_callback(void *data, __attribute__((unused)) int argc, char **argv, __attribute__((unused)) char **azColName) {
+	typedef unordered_map<string, set<string>> table_type;
+	table_type* table = static_cast<table_type*>(data);
+	string city = argv[1];
+	if (city != " ONLINE") {
+		(*table)[argv[1]].insert(argv[0]);
+	}
+	return 0;
+}
+
 
 void dataProcess::atLeastOneInsufficientBalance(const char* dbfile) {
 	unordered_map<string, int> records;
@@ -216,10 +233,7 @@ void dataProcess::recurringTrans(const char* dbfile) {
 
    // Transfer to vector to sort by value
    vector<pair<string, long>> map_vec;
-   for (auto& it : records) {
-    	map_vec.push_back(it);
-	}
-
+   copy(execution::par, records.begin(), records.end(), back_inserter(map_vec));
 	sort(std::execution::par, map_vec.begin(), map_vec.end(), [](pair<string, long> a, pair<string, long> b) {
 		return a.second > b.second;
 	});
@@ -249,10 +263,7 @@ void dataProcess::zipTrans5(const char* dbfile) {
 
    // Transfer to vector to sort by value
    vector<pair<string, long>> map_vec;
-   for (auto& it : records) {
-    	map_vec.push_back(it);
-	}
-
+   copy(execution::par, records.begin(), records.end(), back_inserter(map_vec));
 	sort(std::execution::par, map_vec.begin(), map_vec.end(), [](pair<string, long> a, pair<string, long> b) {
 		return a.second > b.second;
 	});
@@ -283,10 +294,7 @@ void dataProcess::cityTrans5(const char* dbfile) {
 
    // Transfer to vector to sort by value
    vector<pair<string, long>> map_vec;
-   for (auto& it : records) {
-    	map_vec.push_back(it);
-	}
-
+   copy(execution::par, records.begin(), records.end(), back_inserter(map_vec));
 	sort(std::execution::par, map_vec.begin(), map_vec.end(), [](pair<string, long> a, pair<string, long> b) {
 		return a.second > b.second;
 	});
@@ -426,11 +434,8 @@ void dataProcess::bottom5(const char* dbfile) {
 	xmlNodePtr node = xmlNewChild(root_node, NULL, BAD_CAST "bottom5", NULL);
 
 	// Transfer to vector to sort by value
-   vector<pair<string, long>> map_vec;
-   for (auto& it : records) {
-    	map_vec.push_back(it);
-	}
-
+    vector<pair<string, long>> map_vec;
+    copy(execution::par, records.begin(), records.end(), back_inserter(map_vec));
 	sort(std::execution::par, map_vec.begin(), map_vec.end(), [](pair<string, long> a, pair<string, long> b) {
 		return a.second < b.second;
 	});
@@ -482,10 +487,7 @@ void dataProcess::noError5(const char* dbfile) {
 
 	// Transfer to vector to sort by value
    	vector<pair<string, long>> map_vec;
-   	for (auto& it : records) {
-    	map_vec.push_back(it);
-	}
-
+   	copy(execution::par, records.begin(), records.end(), back_inserter(map_vec));
 	sort(execution::par, map_vec.begin(), map_vec.end(), [](pair<string, long> a, pair<string, long> b) {
 		return a.second > b.second;
 	});
@@ -501,11 +503,35 @@ void dataProcess::noError5(const char* dbfile) {
 }
 
 void dataProcess::onlineCity(const char* dbfile) {
-	unordered_map<string, long> records;
+	unordered_map<string, set<string>> records1;
+	unordered_map<string, set<string>> records2;
+	set<string> onlineMerch;
 
 	SQLQuery database(dbfile);
-	string sql = "SELECT `Merchant Name`, `Errors?` from transactions";
-	database.exec(sql, noErrors_callback, records);
+
+	// TODO add threads 
+	string sql = "SELECT `Merchant Name`, `Merchant City` from transactions";
+	database.exec(sql, groupMerch_callback, records1);
+	database.exec(sql, groupCity_callback, records2);
+
+	// Get merchants that have both online and physical locations
+	for_each(execution::par, records1.begin(), records1.end(), [&onlineMerch](auto rec) {
+		if (any_of(execution::par, rec.second.begin(), rec.second.end(), [](string s) {
+			return s == " ONLINE";
+		})) {
+			onlineMerch.insert(rec.first);
+		};
+	});
+
+	// Increment city count if merchant is in onlineMerch
+	unordered_map<string, long> countByCity;
+	for_each(execution::par, records2.begin(), records2.end(), [&countByCity, &onlineMerch](auto rec) {
+		for (auto& merchs: rec.second) {
+			if (onlineMerch.find(merchs) != onlineMerch.end()) {
+				countByCity[rec.first]++;
+			}
+		}
+	});
 
 	xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
 	xmlNodePtr root_node = xmlNewNode(NULL, BAD_CAST "root");
@@ -514,16 +540,13 @@ void dataProcess::onlineCity(const char* dbfile) {
 
 	// Transfer to vector to sort by value
    	vector<pair<string, long>> map_vec;
-   	for (auto& it : records) {
-    	map_vec.push_back(it);
-	}
-
+   	copy(execution::par, countByCity.begin(), countByCity.end(), back_inserter(map_vec));
 	sort(execution::par, map_vec.begin(), map_vec.end(), [](pair<string, long> a, pair<string, long> b) {
 		return a.second > b.second;
 	});
 
-	for (int i = 0; i < 5; i++) {
-    	xmlNodePtr rtnode = xmlNewChild(node, NULL, BAD_CAST "merchantID", BAD_CAST (map_vec[i].first).c_str());
+	for (int i = 0; i < 10; i++) {
+    	xmlNodePtr rtnode = xmlNewChild(node, NULL, BAD_CAST "city", BAD_CAST (map_vec[i].first).c_str());
     	xmlNewProp(rtnode, BAD_CAST "count", BAD_CAST to_string(map_vec[i].second).c_str());
 	}
 
@@ -548,7 +571,7 @@ void dataProcess::onlineCity(const char* dbfile) {
 int main() {
 	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-	// dataProcess::noError5();
+	// dataProcess::onlineCity();
 
 	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 	std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::seconds> (end - begin).count() << "[s]" << std::endl;

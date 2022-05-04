@@ -17,3 +17,4 @@ curl -XGET --digest --user myuser:mypass -O 'https://localhost:8080/transaction/
 curl -XGET --digest --user myuser:mypass -O 'https://localhost:8080/transaction/process/1/bottom5'
 curl -XGET --digest --user myuser:mypass -O 'https://localhost:8080/transaction/process/1/deposits'
 curl -XGET --digest --user myuser:mypass -O 'https://localhost:8080/transaction/process/1/noError5'
+curl -XGET --digest --user myuser:mypass -O 'https://localhost:8080/transaction/process/1/onlineCity'
